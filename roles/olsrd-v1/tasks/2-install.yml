@@ -53,11 +53,26 @@
 - name: build packages
   shell: "cd {{ olsrd_source_dir }}; dpkg-buildpackage -uc -us"
   
-- name: "install {{ olsrd_deb_file }}"
+- name: rename olsr deb
+  command: "mv {{ olsrd_dir }}/olsrd_0.6.6.2-1_amd64.deb {{ olsrd_dir }}/olsrd_{{ _VERSION.stdout }}-{{ _VERSIONCOUNT.stdout }}_amd64.deb"
+
+- name: rename olsr-gui deb
+  command: "mv {{ olsrd_dir }}/olsrd-gui_0.6.6.2-1_amd64.deb {{ olsrd_dir }}/olsrd-gui_{{ _VERSION.stdout }}-{{ _VERSIONCOUNT.stdout }}_amd64.deb"
+
+- name: rename olsr deb
+  command: "mv {{ olsrd_dir }}/olsrd-plugins_0.6.6.2-1_amd64.deb {{ olsrd_dir }}/olsrd-plugins_{{ _VERSION.stdout }}-{{ _VERSIONCOUNT.stdout }}_amd64.deb"
+
+- name: "install olsrd_{{ _VERSION.stdout }}-{{ _VERSIONCOUNT.stdout }}_amd64.deb"
   when: not deb_package.stat.exists
   become: true
   apt:
-    deb: "{{ olsrd_dir }}/{{ olsrd_deb_file }}"
+    deb: "{{ olsrd_dir }}/olsrd_{{ _VERSION.stdout }}-{{ _VERSIONCOUNT.stdout }}_amd64.deb"
+
+- name: "install olsrd-plugins_{{ _VERSION.stdout }}-{{ _VERSIONCOUNT.stdout }}_amd64.deb"
+  when: not deb_package.stat.exists
+  become: true
+  apt:
+    deb: "{{ olsrd_dir }}/olsrd-plugins_{{ _VERSION.stdout }}-{{ _VERSIONCOUNT.stdout }}_amd64.deb"
   notify: [restart olsrd]
 
 - name: configure olsrd
