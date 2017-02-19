@@ -28,8 +28,8 @@ Inventory
 	# file: hosts
 
 	[name/group servers]
-	10.27.0.120	ansible_user=michele	ansible_port:2400
-	example.nnxx	ansible_user=michele	ansible_port:2400
+	olsr.basilicata.nnxx	ansible_user=michele	ansible_port:2400
+	10.27.0.120             ansible_user=michele	ansible_port:2400
 
 
 
@@ -55,6 +55,10 @@ Defining playbooks
         - name: michele
           authorized:
             - ./keys/michele.pub
+        # oslr
+        olsrd_interfaces:
+          - eth0
+
 
 
 
