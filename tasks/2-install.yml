@@ -1,0 +1,83 @@
+- name: Update olsrd git repo
+  git:
+    repo: "{{ olsrd_source_repo }}"
+    dest: "{{ olsrd_source_dir }}"
+    version: "{{ olsrd_source_version }}"
+
+- name: "set git user.email to {{ olsrd_git_email }}"
+  git_config:
+    name: user.email
+    scope: global
+    value: "{{ olsrd_git_email }}"
+
+- name: "set git user.name to {{ olsrd_git_name }}"
+  git_config:
+    name: user.name
+    scope: global
+    value: "{{ olsrd_git_name }}"
+
+- shell: 'git describe --abbrev=0 | sed -e "s/^v//"'
+  args:
+    chdir: "{{ olsrd_source_dir }}/files"
+  register: _VERSION
+
+- shell: 'git rev-list v{{ _VERSION.stdout }}..HEAD --count'
+  args:
+    chdir: "{{ olsrd_source_dir }}/files"
+  register: _VERSIONCOUNT
+
+- set_fact:
+    olsrd_deb_file: "olsrd_{{ _VERSION.stdout }}-{{ _VERSIONCOUNT.stdout }}_amd64.deb"
+
+- name: check if deb package has been already compiled
+  stat:
+    path: "{{ olsrd_dir }}/{{ olsrd_deb_file }}"
+  register: deb_package
+
+- subversion:
+    repo: "{{svn_debian_repo}}"
+    dest: "{{ olsrd_source_dir }}/debian"
+    checkout: yes
+    update: yes
+    force: yes
+
+- copy: content="1" dest={{ olsrd_source_dir }}/debian/source/format
+
+- name: Crea link gps.h
+  file:
+    src: "/usr/include/gps.h"
+    dest: "{{ olsrd_source_dir }}/src/gps.h"
+    state: link
+    force: yes
+
+- name: build packages
+  shell: "cd {{ olsrd_source_dir }}; dpkg-buildpackage -uc -us"
+  
+- name: rename olsr deb
+  command: "mv {{ olsrd_dir }}/olsrd_0.6.6.2-1_amd64.deb {{ olsrd_dir }}/olsrd_{{ _VERSION.stdout }}-{{ _VERSIONCOUNT.stdout }}_amd64.deb"
+
+- name: rename olsr-gui deb
+  command: "mv {{ olsrd_dir }}/olsrd-gui_0.6.6.2-1_amd64.deb {{ olsrd_dir }}/olsrd-gui_{{ _VERSION.stdout }}-{{ _VERSIONCOUNT.stdout }}_amd64.deb"
+
+- name: rename olsr deb
+  command: "mv {{ olsrd_dir }}/olsrd-plugins_0.6.6.2-1_amd64.deb {{ olsrd_dir }}/olsrd-plugins_{{ _VERSION.stdout }}-{{ _VERSIONCOUNT.stdout }}_amd64.deb"
+
+- name: "install olsrd_{{ _VERSION.stdout }}-{{ _VERSIONCOUNT.stdout }}_amd64.deb"
+  when: not deb_package.stat.exists
+  become: true
+  apt:
+    deb: "{{ olsrd_dir }}/olsrd_{{ _VERSION.stdout }}-{{ _VERSIONCOUNT.stdout }}_amd64.deb"
+
+- name: "install olsrd-plugins_{{ _VERSION.stdout }}-{{ _VERSIONCOUNT.stdout }}_amd64.deb"
+  when: not deb_package.stat.exists
+  become: true
+  apt:
+    deb: "{{ olsrd_dir }}/olsrd-plugins_{{ _VERSION.stdout }}-{{ _VERSIONCOUNT.stdout }}_amd64.deb"
+  notify: [restart olsrd]
+
+- name: configure olsrd
+  become: true
+  template:
+    src: olsrd.conf.j2
+    dest: /etc/olsrd/olsrd.conf
+  notify: [restart olsrd]
