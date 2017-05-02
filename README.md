@@ -9,7 +9,7 @@ Clonare con::
 
 Roles Variables
 ```yaml
-# interfaces OLSRd2 will bind to
+# interfaces OLSRd will bind to
 olsrd_interfaces:
     - eth0
 
